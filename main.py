@@ -1,6 +1,6 @@
 import pyodbc
 
-DRIVER_NAME = 'SQL Server Native Client 10.0'
+DRIVER_NAME = 'ODBC Driver 11 for SQL Server'
 SERVER_NAME = '172.20.1.220\SQL2014'
 DATABASE_NAME = '8_CZO2'
 
