@@ -34,12 +34,15 @@ class SammApp(tk.Frame):
         self.list_of_operators = ["Claro", "CNT", "Movistar"]
         self.list_of_sessiontype = ["HTTP Download", "HTTP Post"]
         self.list_of_technology = ["LTE", "WCDMA"]
+        self.list_of_czo = ["Nacional", "CZO2", "CZO3", "CZO4", "CZO5", "CZO6"]
         self.operadora = tk.StringVar()
         self.operadora.set("Claro")
         self.sessiontype = tk.StringVar()
         self.sessiontype.set("HTTP Download")
         self.technology = tk.StringVar()
         self.technology.set("LTE")
+        self.czo = tk.StringVar()
+        self.czo.set("Nacional")
         self.create_widgets()
         self.program_is_running = False
 
@@ -47,13 +50,13 @@ class SammApp(tk.Frame):
         """Create the widges to be used with tkinter and tkcalendar"""
 
         self.lbl_1 = tk.Label(self.master, text="Operadora:", width=20, font=("bold", 11))
-        self.lbl_1.grid(row=0, column=0, sticky=tk.W)
+        self.lbl_1.grid(row=0, column=0, sticky=tk.W, padx=13)
 
         self.option_menu1 = tk.OptionMenu(self.master, self.operadora, *self.list_of_operators)
         self.option_menu1.grid(row=0, column=0, sticky=tk.W, padx=145)
 
         self.lbl_2 = tk.Label(self.master, text="Fecha inicio:", width=10, font=("bold", 11))
-        self.lbl_2.grid(row=0, column=0, sticky=tk.W, padx=275)
+        self.lbl_2.grid(row=0, column=0, sticky=tk.W, padx=285)
 
         self.fecha_inicio = tc.DateEntry(self.master, selectmode='day', date_pattern='yyyy-mm-dd')
         self.fecha_inicio.grid(row=0, column=0, sticky=tk.W, padx=380)
@@ -85,10 +88,16 @@ class SammApp(tk.Frame):
         self.option_menu2.grid(row=1, column=0, sticky=tk.W, padx=145)
 
         self.lbl_7 = tk.Label(self.master, text="Tecnología:", width=20, font=("bold", 11))
-        self.lbl_7.grid(row=2, column=0, sticky=tk.W)
+        self.lbl_7.grid(row=2, column=0, sticky=tk.W, padx=12)
 
         self.option_menu3 = tk.OptionMenu(self.master, self.technology, *self.list_of_technology)
         self.option_menu3.grid(row=2, column=0, sticky=tk.W, padx=145)
+
+        self.lbl_8 = tk.Label(self.master, text="CZO:", width=20, font=("bold", 11))
+        self.lbl_8.grid(row=3, column=0, sticky=tk.W, padx=32)
+
+        self.option_menu4 = tk.OptionMenu(self.master, self.czo, *self.list_of_czo)
+        self.option_menu4.grid(row=3, column=0, sticky=tk.W, padx=145)
 
     def start(self):
         """Define start button actions"""
@@ -112,6 +121,7 @@ class SammApp(tk.Frame):
         operadora = self.operadora.get()
         sessiontype = self.sessiontype.get()
         technology = self.technology.get()
+        czo = self.czo.get()
         fecha_inicio = self.fecha_inicio.get_date().strftime("%Y-%m-%d")
         fecha_fin = self.fecha_fin.get_date().strftime("%Y-%m-%d")
         tiempo_inicio = self.tiempo_inicio.get()
@@ -137,11 +147,14 @@ class SammApp(tk.Frame):
         sql_query1 = f"SELECT DatasourceId, SessionIdOrCallIndex, SessionType, StartTime, StartLatitude, " \
                      f"StartLongitude, StartRadioTechnology, EndTime, EndLatitude, EndLongitude, EndRadioTechnology, " \
                      f"SimOperator, IMSI, IMEI, SessionEndStatus FROM {os.getenv('TABLE1')} " \
-                     f"WHERE StartTime BETWEEN '{fecha_inicio}' AND '{fecha_fin}';"
-        sql_query2 = f"SELECT DatasourceId, SessionId, SessionType, StartDateTime, EndDateTime, Url, EndServiceBearer, " \
-                     f"EndDataRadioBearer, EndFileSize, EndServiceStatus, IPServiceSetupTimeMethodAMethod, " \
-                     f"DataTransferTimeMethodADuration FROM {os.getenv('TABLE2')} WHERE StartDateTime >= '{fecha_inicio}' " \
-                     f"AND StartDateTime <= '{fecha_fin}';"
+                     f"WHERE StartTime >= '{fecha_inicio}' AND EndTime <= '{fecha_fin}' " \
+                     f"AND SessionType = '{sessiontype}' AND StartRadioTechnology = '{technology}' " \
+                     f"AND EndRadioTechnology = '{technology}' AND SimOperator = '{operadora}';"
+        sql_query2 = f"SELECT DatasourceId, SessionId, SessionType, StartDateTime, EndDateTime, Url, " \
+                     f"EndServiceBearer, EndDataRadioBearer, EndFileSize, EndServiceStatus, " \
+                     f"IPServiceSetupTimeMethodAMethod, DataTransferTimeMethodADuration " \
+                     f"FROM {os.getenv('TABLE2')} WHERE StartDateTime >= '{fecha_inicio}' " \
+                     f"AND EndDateTime <= '{fecha_fin}' AND SessionType = '{sessiontype}';"
 
         try:
             # Create the engine according to SQLAlchemy documentation
@@ -177,6 +190,8 @@ class SammApp(tk.Frame):
         df1['StartLongitude'] = df1['StartLongitude'].astype(float)
         df1['EndLatitude'] = df1['EndLatitude'].astype(float)
         df1['EndLongitude'] = df1['EndLongitude'].astype(float)
+        df1['IMSI'] = df1['IMSI'].astype(str)
+        df1['IMEI'] = df1['IMEI'].astype(str)
         df2['StartTime'] = pd.to_datetime(df2['StartTime'], format='%Y-%m-%d %H:%M:%S.%f')
         df2['EndTime'] = pd.to_datetime(df2['EndTime'], format='%Y-%m-%d %H:%M:%S.%f')
         df2['EndFileSize'] = df2['EndFileSize'].astype(float)
@@ -184,6 +199,15 @@ class SammApp(tk.Frame):
         # Merge df1 and df2 by: 'DatasourceId', 'SessionId', 'SessionType', 'StartTime', 'EndTime', 'EndServiceStatus'
         df = df1.merge(df2, how='right', on=['DatasourceId', 'SessionId', 'SessionType', 'StartTime', 'EndTime',
                                              'EndServiceStatus'])
+
+        # dfsense: read the data in sense_file file and convert it to a pandas dataframe
+        columnsSense = ['Device', 'IMSI', 'IMEI', 'CZO']
+        dfsense = pd.read_excel(os.getenv('sense_file'), usecols=columnsSense)
+        dfsense['IMSI'] = dfsense['IMSI'].astype(str)
+        dfsense['IMEI'] = dfsense['IMEI'].astype(str)
+
+        # Merge df and dfsense by: 'IMSI', 'IMEI'
+        df = df.merge(dfsense, how='left', on=['IMSI', 'IMEI'])
 
         def throughput(row):
             """function to return the throughput value """
@@ -208,21 +232,25 @@ class SammApp(tk.Frame):
         df = df.loc[df['SessionType'] == f'{sessiontype}']
         df = df.loc[df['StartRadioTechnology'] == f'{technology}']
         df = df.loc[df['EndRadioTechnology'] == f'{technology}']
+        if czo != 'Nacional':
+            df = df.loc[df['CZO'] == f'{czo}']
 
         # Drop rows with NaN values in the following columns
         df = df.dropna(subset=['StartLatitude', 'StartLongitude', 'EndLatitude', 'EndLongitude', 'ThroughputMbps'])
 
         # Pass the df to a .csv file
-        df.to_csv(f'SessionSummary_{operadora}_{sessiontype}_{technology}.csv', index=False, sep=';', encoding='utf-8',
+        df.to_csv(f'SessionSummary_{operadora}_{sessiontype}_{technology}_{czo}.csv', index=False, sep=';',
+                  encoding='utf-8',
                   header=True, decimal=',')
 
         # Remove the previous files if already exist
-        if os.path.exists(f"{os.getenv('download_route')}/SessionSummary_{operadora}_{sessiontype}_{technology}.csv"):
-            os.remove(f"{os.getenv('download_route')}/SessionSummary_{operadora}_{sessiontype}_{technology}.csv")
+        if os.path.exists(
+                f"{os.getenv('download_route')}/SessionSummary_{operadora}_{sessiontype}_{technology}_{czo}.csv"):
+            os.remove(f"{os.getenv('download_route')}/SessionSummary_{operadora}_{sessiontype}_{technology}_{czo}.csv")
 
         # Download the .csv file
-        os.rename(f'SessionSummary_{operadora}_{sessiontype}_{technology}.csv',
-                  f"{os.getenv('download_route')}/SessionSummary_{operadora}_{sessiontype}_{technology}.csv")
+        os.rename(f'SessionSummary_{operadora}_{sessiontype}_{technology}_{czo}.csv',
+                  f"{os.getenv('download_route')}/SessionSummary_{operadora}_{sessiontype}_{technology}_{czo}.csv")
 
         # Create de dataframes to be used for the map and the configuration for the map
         df_downup = df
@@ -597,13 +625,14 @@ class SammApp(tk.Frame):
         map_1 = KeplerGl(height=400, data={"data_1": df_downup}, config=config)
 
         # Remove the previous html file if already exist
-        if os.path.exists(f"{os.getenv('download_route')}/kepler_map_{operadora}_{sessiontype}_{technology}.html"):
-            os.remove(f"{os.getenv('download_route')}/kepler_map_{operadora}_{sessiontype}_{technology}.html")
+        if os.path.exists(
+                f"{os.getenv('download_route')}/kepler_map_{operadora}_{sessiontype}_{technology}_{czo}.html"):
+            os.remove(f"{os.getenv('download_route')}/kepler_map_{operadora}_{sessiontype}_{technology}_{czo}.html")
 
         # Download the kepler map as a .html file
         map_1.save_to_html(file_name='kepler_map.html')
         os.rename('kepler_map.html',
-                  f"{os.getenv('download_route')}/kepler_map_{operadora}_{sessiontype}_{technology}.html")
+                  f"{os.getenv('download_route')}/kepler_map_{operadora}_{sessiontype}_{technology}_{czo}.html")
 
 
 if __name__ == "__main__":
