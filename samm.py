@@ -9,7 +9,7 @@ from sqlalchemy.engine import URL
 from sqlalchemy import create_engine
 from keplergl import KeplerGl
 import geopandas as gpd
-from shapely.geometry import Point
+from shapely.geometry import Point, LineString
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -126,14 +126,14 @@ class SammApp(tk.Frame):
         self.lbl_4.grid(row=2, column=0, sticky=tk.W, padx=275, pady=10)
 
         self.tiempo_inicio = tk.Entry(self.master)
-        self.tiempo_inicio.insert(0, "HH:mm")
+        self.tiempo_inicio.insert(0, "00:01")
         self.tiempo_inicio.grid(row=2, column=0, sticky=tk.W, padx=380, pady=10)
 
         self.lbl_5 = tk.Label(self.master, text="Hora fin:", width=10, font=("bold", 11))
         self.lbl_5.grid(row=2, column=0, sticky=tk.W, padx=475, pady=10)
 
         self.tiempo_fin = tk.Entry(self.master)
-        self.tiempo_fin.insert(0, "HH:mm")
+        self.tiempo_fin.insert(0, "23:59")
         self.tiempo_fin.grid(row=2, column=0, sticky=tk.W, padx=570, pady=10)
 
         self.lbl_6 = tk.Label(self.master, text="Tipo de Sesión:", width=20, font=("bold", 11))
@@ -377,33 +377,64 @@ class SammApp(tk.Frame):
         # Create a new column with the throughput value
         df['ThroughputMbps'] = df.apply(lambda row: throughput(row), axis=1)
 
+        # Pass the df to a .csv file
+        df.to_csv(f'FullSessionSummary.csv', index=False, sep=';', encoding='utf-8', header=True, decimal=',')
+
+        # Remove the previous files if already exist
+        if os.path.exists(
+                f"{os.getenv('download_route')}/FullSessionSummary.csv"):
+            os.remove(
+                f"{os.getenv('download_route')}/FullSessionSummary.csv")
+
+        # Download the .csv file
+        os.rename(f"FullSessionSummary.csv",
+                  f"{os.getenv('download_route')}/FullSessionSummary.csv")
+
         # Filter the df by the selected parameters
         if self.repgen.get():
-            df = df
+            # create a geometry column in the normal dataframe
+            df['geometry'] = df.apply(lambda row: LineString(
+                [(row['StartLongitude'], row['StartLatitude']), (row['EndLongitude'], row['EndLatitude'])]), axis=1)
+            df = gpd.GeoDataFrame(df, geometry='geometry', crs=4326)
+
+            gdf1 = gdf.loc[gdf['DPA_DESPRO'] == provincia]
+            gdf1 = gdf1.loc[gdf1['DPA_DESCAN'] == canton]
+            gdf1 = gdf1.loc[gdf1['DPA_DESPAR'] == parroquia]
+            gdf1 = gdf1.to_crs(df.crs)
+
+            df = df[df.apply(lambda row: Point(row['StartLongitude'], row['StartLatitude']).within(
+                gdf1['geometry'].iloc[0]) and Point(row['EndLongitude'], row['EndLatitude']).within(
+                gdf1['geometry'].iloc[0]), axis=1)].drop(columns=['geometry'])
+
             # Pass the df to a .csv file
             fecha_inicio1 = fecha_inicio.strftime('%Y-%m-%d')
             fecha_fin1 = fecha_fin.strftime('%Y-%m-%d')
             if fecha_inicio1 == fecha_fin1:
-                df.to_csv(f'SessionSummary_{czo}_{fecha_inicio1}.csv', index=False, sep=';', encoding='utf-8',
+                df.to_csv(f'SessionSummary_{czo}_{provincia}_{canton}_{parroquia}_{fecha_inicio1}.csv', index=False,
+                          sep=';', encoding='utf-8',
                           header=True, decimal=',')
                 # Remove the previous files if already exist
-                if os.path.exists(f"{os.getenv('download_route')}/SessionSummary_{czo}_{fecha_inicio1}.csv"):
-                    os.remove(f"{os.getenv('download_route')}/SessionSummary_{czo}_{fecha_inicio1}.csv")
+                if os.path.exists(
+                        f"{os.getenv('download_route')}/SessionSummary_{czo}_{provincia}_{canton}_{parroquia}_{fecha_inicio1}.csv"):
+                    os.remove(
+                        f"{os.getenv('download_route')}/SessionSummary_{czo}_{provincia}_{canton}_{parroquia}_{fecha_inicio1}.csv")
 
                 # Download the .csv file
-                os.rename(f'SessionSummary_{czo}_{fecha_inicio1}.csv',
-                          f"{os.getenv('download_route')}/SessionSummary_{czo}_{fecha_inicio1}.csv")
+                os.rename(f"SessionSummary_{czo}_{provincia}_{canton}_{parroquia}_{fecha_inicio1}.csv",
+                          f"{os.getenv('download_route')}/SessionSummary_{czo}_{provincia}_{canton}_{parroquia}_{fecha_inicio1}.csv")
             else:
-                df.to_csv(f'SessionSummary_{czo}_{fecha_inicio1}_{fecha_fin1}.csv', index=False, sep=';',
+                df.to_csv(f"SessionSummary_{czo}_{provincia}_{canton}_{parroquia}_{fecha_inicio1}_{fecha_fin1}.csv",
+                          index=False, sep=';',
                           encoding='utf-8', header=True, decimal=',')
                 # Remove the previous files if already exist
                 if os.path.exists(
-                        f"{os.getenv('download_route')}/SessionSummary_{czo}_{fecha_inicio1}_{fecha_fin1}.csv"):
-                    os.remove(f"{os.getenv('download_route')}/SessionSummary_{czo}_{fecha_inicio1}_{fecha_fin1}.csv")
+                        f"{os.getenv('download_route')}/SessionSummary_{czo}_{provincia}_{canton}_{parroquia}_{fecha_inicio1}_{fecha_fin1}.csv"):
+                    os.remove(
+                        f"{os.getenv('download_route')}/SessionSummary_{czo}_{provincia}_{canton}_{parroquia}_{fecha_inicio1}_{fecha_fin1}.csv")
 
                 # Download the .csv file
-                os.rename(f'SessionSummary_{czo}_{fecha_inicio1}_{fecha_fin1}.csv',
-                          f"{os.getenv('download_route')}/SessionSummary_{czo}_{fecha_inicio1}_{fecha_fin1}.csv")
+                os.rename(f"SessionSummary_{czo}_{provincia}_{canton}_{parroquia}_{fecha_inicio1}_{fecha_fin1}.csv",
+                          f"{os.getenv('download_route')}/SessionSummary_{czo}_{provincia}_{canton}_{parroquia}_{fecha_inicio1}_{fecha_fin1}.csv")
 
             # Define the dataframes by operator and technology
             df_claro_3g = df.loc[(df['SimOperator'] == 'Claro') & (df['StartRadioTechnology'] == 'WCDMA') & (
@@ -449,21 +480,21 @@ class SammApp(tk.Frame):
             df_movistar_3g_dl = df_movistar_3g.loc[df_movistar_3g['SessionType'] == 'HTTP Download']
             df_movistar_4g_dl = df_movistar_4g.loc[df_movistar_4g['SessionType'] == 'HTTP Download']
 
-            # Define the dataframes by operator, technology and session type 'FTP Post'
-            df_claro_3g_ul_ftp = df_claro_3g.loc[df_claro_3g['SessionType'] == 'FTP Post']
-            df_claro_4g_ul_ftp = df_claro_4g.loc[df_claro_4g['SessionType'] == 'FTP Post']
-            df_cnt_3g_ul_ftp = df_cnt_3g.loc[df_cnt_3g['SessionType'] == 'FTP Post']
-            df_cnt_4g_ul_ftp = df_cnt_4g.loc[df_cnt_4g['SessionType'] == 'FTP Post']
-            df_movistar_3g_ul_ftp = df_movistar_3g.loc[df_movistar_3g['SessionType'] == 'FTP Post']
-            df_movistar_4g_ul_ftp = df_movistar_4g.loc[df_movistar_4g['SessionType'] == 'FTP Post']
-
-            # Define the dataframes by operator, technology and session type 'FTP Download'
-            df_claro_3g_dl_ftp = df_claro_3g.loc[df_claro_3g['SessionType'] == 'FTP Download']
-            df_claro_4g_dl_ftp = df_claro_4g.loc[df_claro_4g['SessionType'] == 'FTP Download']
-            df_cnt_3g_dl_ftp = df_cnt_3g.loc[df_cnt_3g['SessionType'] == 'FTP Download']
-            df_cnt_4g_dl_ftp = df_cnt_4g.loc[df_cnt_4g['SessionType'] == 'FTP Download']
-            df_movistar_3g_dl_ftp = df_movistar_3g.loc[df_movistar_3g['SessionType'] == 'FTP Download']
-            df_movistar_4g_dl_ftp = df_movistar_4g.loc[df_movistar_4g['SessionType'] == 'FTP Download']
+            # # Define the dataframes by operator, technology and session type 'FTP Post'
+            # df_claro_3g_ul_ftp = df_claro_3g.loc[df_claro_3g['SessionType'] == 'FTP Post']
+            # df_claro_4g_ul_ftp = df_claro_4g.loc[df_claro_4g['SessionType'] == 'FTP Post']
+            # df_cnt_3g_ul_ftp = df_cnt_3g.loc[df_cnt_3g['SessionType'] == 'FTP Post']
+            # df_cnt_4g_ul_ftp = df_cnt_4g.loc[df_cnt_4g['SessionType'] == 'FTP Post']
+            # df_movistar_3g_ul_ftp = df_movistar_3g.loc[df_movistar_3g['SessionType'] == 'FTP Post']
+            # df_movistar_4g_ul_ftp = df_movistar_4g.loc[df_movistar_4g['SessionType'] == 'FTP Post']
+            #
+            # # Define the dataframes by operator, technology and session type 'FTP Download'
+            # df_claro_3g_dl_ftp = df_claro_3g.loc[df_claro_3g['SessionType'] == 'FTP Download']
+            # df_claro_4g_dl_ftp = df_claro_4g.loc[df_claro_4g['SessionType'] == 'FTP Download']
+            # df_cnt_3g_dl_ftp = df_cnt_3g.loc[df_cnt_3g['SessionType'] == 'FTP Download']
+            # df_cnt_4g_dl_ftp = df_cnt_4g.loc[df_cnt_4g['SessionType'] == 'FTP Download']
+            # df_movistar_3g_dl_ftp = df_movistar_3g.loc[df_movistar_3g['SessionType'] == 'FTP Download']
+            # df_movistar_4g_dl_ftp = df_movistar_4g.loc[df_movistar_4g['SessionType'] == 'FTP Download']
 
             # Create the first dataframe for the report
             datos1 = {'Prestador': ['Conecel', 'CNT EP', 'Otecel'],
@@ -626,18 +657,22 @@ class SammApp(tk.Frame):
             df = df.dropna(subset=['StartLatitude', 'StartLongitude', 'EndLatitude', 'EndLongitude', 'ThroughputMbps'])
 
             # create a geometry column in the normal dataframe
-            df['StartGeometry'] = df.apply(lambda row: Point(row['StartLongitude'], row['StartLatitude']), axis=1)
-            df['EndGeometry'] = df.apply(lambda row: Point(row['EndLongitude'], row['EndLatitude']), axis=1)
-            df = gpd.GeoDataFrame(df, geometry='StartGeometry', crs=4326)
-            df['EndGeometry'] = gpd.GeoSeries(df['EndGeometry'], crs=4326)
+            df['geometry'] = df.apply(lambda row: LineString(
+                [(row['StartLongitude'], row['StartLatitude']), (row['EndLongitude'], row['EndLatitude'])]), axis=1)
+            df = gpd.GeoDataFrame(df, geometry='geometry', crs=4326)
 
+            # read the GeoJSON file
             gdf1 = gdf.loc[gdf['DPA_DESPRO'] == provincia]
             gdf1 = gdf1.loc[gdf1['DPA_DESCAN'] == canton]
             gdf1 = gdf1.loc[gdf1['DPA_DESPAR'] == parroquia]
             gdf1 = gdf1.to_crs(df.crs)
 
-            df = df[df.StartGeometry.intersects(gdf1.geometry.unary_union)]
-            df = df[df.EndGeometry.intersects(gdf1.geometry.unary_union)].drop(columns=['StartGeometry', 'EndGeometry'])
+            # filter the rows in normal dataframe matching start and end points in geo dataframe
+            df = df[df.apply(lambda row: Point(row['StartLongitude'], row['StartLatitude']).within(
+                gdf1['geometry'].iloc[0]) and Point(row['EndLongitude'], row['EndLatitude']).within(
+                gdf1['geometry'].iloc[0]), axis=1)].drop(columns=['geometry'])
+
+            # Convert the geometry of the geopandas dataframe to a GeoJSON format
             gdf_json = gdf1.to_json()
 
             # Pass the df to a .csv file
