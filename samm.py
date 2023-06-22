@@ -440,13 +440,13 @@ class SammApp(tk.Frame):
                                              'EndServiceStatus'])
 
         # dfsense: read the data in sense_file file and convert it to a pandas dataframe
-        columnsSense = ['Device', 'IMSI', 'IMEI', 'CZO']
+        columnsSense = ['Device', 'IMEI', 'CZO']
         dfsense = pd.read_excel(os.getenv('sense_file'), usecols=columnsSense)
-        dfsense['IMSI'] = dfsense['IMSI'].astype(str)
+        # dfsense['IMSI'] = dfsense['IMSI'].astype(str)
         dfsense['IMEI'] = dfsense['IMEI'].astype(str)
 
-        # Merge df and dfsense by: 'IMSI', 'IMEI'
-        df = df.merge(dfsense, how='left', on=['IMSI', 'IMEI'])
+        # Merge df and dfsense by: 'IMEI'
+        df = df.merge(dfsense, how='left', on=['IMEI'])
 
         def throughput(row):
             """function to return the throughput value """

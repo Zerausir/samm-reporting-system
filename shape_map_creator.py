@@ -41,7 +41,7 @@ gdf_quito['DPA_DESPAR'] = gdf_quito['DPA_DESPAR'].str.upper()
 gdf_quito['DPA_DESPAR'] = gdf_quito['DPA_DESPAR'].str.replace('INIAQUITO', 'IÑAQUITO')
 gdf_quito['DPA_DESPAR'] = gdf_quito['DPA_DESPAR'].str.replace('S.ISIDRO DEL INC', 'SAN ISIDRO DEL INCA')
 
-# create a boolean mask indicating which row have 'ALNGASI', ... in the 'DPA_DESPAR' column
+# create a boolean mask indicating which row have 'ALANGASI', ... in the 'DPA_DESPAR' column
 mask1 = (gdf_quito['DPA_DESPAR'] == 'ALANGASI') | (gdf_quito['DPA_DESPAR'] == 'AMAGUANIA') | (
         gdf_quito['DPA_DESPAR'] == 'CALACALI') | (gdf_quito['DPA_DESPAR'] == 'CALDERON') | (
                 gdf_quito['DPA_DESPAR'] == 'CUMBAYA') | (gdf_quito['DPA_DESPAR'] == 'NAYON') | (
@@ -60,8 +60,15 @@ mask1 = (gdf_quito['DPA_DESPAR'] == 'ALANGASI') | (gdf_quito['DPA_DESPAR'] == 'A
                 gdf_quito['DPA_DESPAR'] == 'CONOCOTO') | (gdf_quito['DPA_DESPAR'] == 'PIFO') | (
                 gdf_quito['DPA_DESPAR'] == 'POMASQUI')
 
-# use the boolean mask to drop the rows where 'ALNGASI', ... in the 'DPA_DESPAR' column
+# use the boolean mask to drop the rows where 'ALANGASI', ... in the 'DPA_DESPAR' column
 gdf_quito = gdf_quito[~mask1]
+
+# Dissolve on DPA_DESPAR to combine all polygons within each district
+gdf_quito = gdf_quito.dissolve(by='DPA_DESPAR')
+
+# Reorder columns and reset index
+gdf_quito = gdf_quito.reset_index().reindex(
+    columns=['DPA_DESPAR', 'DPA_CANTON', 'DPA_DESCAN', 'DPA_PROVIN', 'DPA_DESPRO', 'DPA_ANIO', 'fcode', 'geometry'])
 
 # Set CRS to EPSG:4326
 gdf_quito.crs = 'EPSG:4326'
@@ -89,10 +96,14 @@ gdf_esm = gpd.GeoDataFrame(
      'fcode': 'HA004', 'geometry': gpd.GeoSeries(coords)})
 gdf_esm['DPA_DESPAR'] = gdf_esm['DPA_DESPAR'].str.upper()
 gdf_esm['DPA_DESPAR'] = gdf_esm['DPA_DESPAR'].str.replace('ESM - PARROQUIA ', '')
-gdf_esm['DPA_DESPAR'] = gdf_esm['DPA_DESPAR'].str.replace('ESMERALDAS', 'ESMERALDAS1')
+gdf_esm['DPA_DESPAR'] = gdf_esm['DPA_DESPAR'].str.replace('ESMERALDAS', 'PARROQUIA ESMERALDAS')
 
-# mask2 = (gdf_esm['DPA_DESPAR'] == 'ESMERALDAS')
-# gdf_esm = gdf_esm[~mask2]
+# Dissolve on DPA_DESPAR to combine all polygons within each district
+gdf_esm = gdf_esm.dissolve(by='DPA_DESPAR')
+
+# Reorder columns and reset index
+gdf_esm = gdf_esm.reset_index().reindex(
+    columns=['DPA_DESPAR', 'DPA_CANTON', 'DPA_DESCAN', 'DPA_PROVIN', 'DPA_DESPRO', 'DPA_ANIO', 'fcode', 'geometry'])
 
 # Set CRS to EPSG:4326
 gdf_esm.crs = 'EPSG:4326'
@@ -119,6 +130,13 @@ gdf_imb = gpd.GeoDataFrame(
      'DPA_CANTON': '1001', 'DPA_DESCAN': 'IBARRA', 'DPA_PROVIN': '10', 'DPA_DESPRO': 'IMBABURA', 'DPA_ANIO': 2023,
      'fcode': 'HA004', 'geometry': gpd.GeoSeries(coords)})
 gdf_imb['DPA_DESPAR'] = gdf_imb['DPA_DESPAR'].str.upper()
+
+# Dissolve on DPA_DESPAR to combine all polygons within each district
+gdf_imb = gdf_imb.dissolve(by='DPA_DESPAR')
+
+# Reorder columns and reset index
+gdf_imb = gdf_imb.reset_index().reindex(
+    columns=['DPA_DESPAR', 'DPA_CANTON', 'DPA_DESCAN', 'DPA_PROVIN', 'DPA_DESPRO', 'DPA_ANIO', 'fcode', 'geometry'])
 
 # Set CRS to EPSG:4326
 gdf_imb.crs = 'EPSG:4326'
@@ -148,6 +166,13 @@ gdf_cay['DPA_DESPAR'] = gdf_cay['DPA_DESPAR'].str.upper()
 
 mask3 = (gdf_cay['DPA_DESPAR'] == 'JUAN MONTALVO')
 gdf_cay = gdf_cay[mask3]
+
+# Dissolve on DPA_DESPAR to combine all polygons within each district
+gdf_cay = gdf_cay.dissolve(by='DPA_DESPAR')
+
+# Reorder columns and reset index
+gdf_cay = gdf_cay.reset_index().reindex(
+    columns=['DPA_DESPAR', 'DPA_CANTON', 'DPA_DESCAN', 'DPA_PROVIN', 'DPA_DESPRO', 'DPA_ANIO', 'fcode', 'geometry'])
 
 # Set CRS to EPSG:4326
 gdf_cay.crs = 'EPSG:4326'
@@ -180,6 +205,13 @@ mask4 = (gdf_rum['DPA_DESPAR'] == 'SANGOLQUÍ') | (gdf_rum['DPA_DESPAR'] == 'COT
         gdf_rum['DPA_DESPAR'] == 'RUMIPAMBA')
 
 gdf_rum = gdf_rum[~mask4]
+
+# Dissolve on DPA_DESPAR to combine all polygons within each district
+gdf_rum = gdf_rum.dissolve(by='DPA_DESPAR')
+
+# Reorder columns and reset index
+gdf_rum = gdf_rum.reset_index().reindex(
+    columns=['DPA_DESPAR', 'DPA_CANTON', 'DPA_DESCAN', 'DPA_PROVIN', 'DPA_DESPRO', 'DPA_ANIO', 'fcode', 'geometry'])
 
 # Set CRS to EPSG:4326
 gdf_rum.crs = 'EPSG:4326'
