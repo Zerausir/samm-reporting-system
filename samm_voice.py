@@ -370,18 +370,13 @@ class SammApp(tk.Frame):
             sql_query1 = f"SELECT DatasourceId, SessionIdOrCallIndex, SessionType, StartTime, StartLatitude, " \
                          f"StartLongitude, StartRadioTechnology, EndTime, EndLatitude, EndLongitude, " \
                          f"EndRadioTechnology, SimOperator, IMSI, IMEI, SessionEndStatus " \
-                         f"FROM {os.getenv('TABLE1')} " \
+                         f"FROM {os.getenv('TABLE3')} " \
                          f"WHERE StartTime >= '{fecha_inicio}' AND EndTime <= '{fecha_fin}';"
-            sql_query2 = f"SELECT DatasourceId, SessionId, SessionType, StartDateTime, EndDateTime, Url, " \
-                         f"EndServiceBearer, EndDataRadioBearer, EndFileSize, EndServiceStatus, " \
-                         f"IPServiceSetupTimeMethodAMethod, DataTransferTimeMethodADuration " \
-                         f"FROM {os.getenv('TABLE2')} " \
-                         f"WHERE StartDateTime >= '{fecha_inicio}' AND EndDateTime <= '{fecha_fin}';"
         elif self.mapa.get() or self.mapaparroquia.get():
             sql_query1 = f"SELECT DatasourceId, SessionIdOrCallIndex, SessionType, StartTime, StartLatitude, " \
                          f"StartLongitude, StartRadioTechnology, EndTime, EndLatitude, EndLongitude, " \
                          f"EndRadioTechnology, SimOperator, IMSI, IMEI, SessionEndStatus " \
-                         f"FROM {os.getenv('TABLE1')} " \
+                         f"FROM {os.getenv('TABLE3')} " \
                          f"WHERE StartTime >= '{fecha_inicio}' AND EndTime <= '{fecha_fin}' " \
                          f"AND {sessiontype_query} " \
                          f"AND {technology_query1} " \
